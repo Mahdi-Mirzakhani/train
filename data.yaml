@@ -1,0 +1,7 @@
+names:
+  0: face
+nc: 1
+path: D:\python\datase
+train: D:\python\dataset\train
+val: D:\python\dataset\val
+test: D:\python\dataset\test
