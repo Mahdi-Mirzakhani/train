@@ -23,7 +23,7 @@ class YOLODatasetGenerator:
         
         # ===== مسیرهای ثابت - اینجا مسیرهای خود را قرار دهید =====
         self.model_path = "D:\python\detect-face//ATRAS-l.pt"  # مسیر مدل خود را اینجا وارد کنید
-        self.base_output_dir = "D:\\python\\dataset\\test"  # مسیر پوشه خروجی را اینجا وارد کنید
+        self.base_output_dir = "D:\\python\\dataset\\drone"  # مسیر پوشه خروجی را اینجا وارد کنید
         # ================================================
         
     def select_paths_gui(self):

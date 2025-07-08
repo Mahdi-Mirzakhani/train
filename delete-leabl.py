@@ -60,5 +60,5 @@ def clean_labels(yaml_path):
 # ======================
 # اجرا:
 # فقط مسیر فایل YAML را اینجا بده
-yaml_file_path = r"D:\\python\\dataset\\data.yaml"
+yaml_file_path = r"D:\\python\\dataset\drone\\main_dataset\\test\\data.yaml"
 clean_labels(yaml_file_path)
