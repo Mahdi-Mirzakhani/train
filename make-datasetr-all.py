@@ -22,8 +22,8 @@ class YOLODatasetGenerator:
         self.root = None
         
         # ===== مسیرهای ثابت - اینجا مسیرهای خود را قرار دهید =====
-        self.model_path = "D:\python\detect-face//ATRAS-l.pt"  # مسیر مدل خود را اینجا وارد کنید
-        self.base_output_dir = "D:\\python\\dataset\\drone"  # مسیر پوشه خروجی را اینجا وارد کنید
+        self.model_path = "D:\\python\\detect-face//ATRAS-l.pt"  # مسیر مدل خود را اینجا وارد کنید
+        self.base_output_dir = "D:\\python\\dataset\\google-image\\dataset-label"  # مسیر پوشه خروجی را اینجا وارد کنید
         # ================================================
         
     def select_paths_gui(self):
@@ -281,7 +281,7 @@ class YOLODatasetGenerator:
                     height = (y2 - y1) / h
                     
                     # Save detections with confidence above threshold
-                    if conf > 0.3:
+                    if conf > 0.6:
                         f.write(f"{cls} {x_center:.6f} {y_center:.6f} {width:.6f} {height:.6f}\n")
     
     def create_yaml_config(self):

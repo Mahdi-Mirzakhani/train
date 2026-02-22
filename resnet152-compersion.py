@@ -27,42 +27,112 @@ class AdvancedImageComparator:
         self.model = None
         self.current_group = None
         self.photo_references = []
+        self.current_model_name = None
         
         self.setup_ui()
-        self.initialize_model()
+        self.check_gpu()  # ابتدا GPU را چک کن
+        # مدل بعداً با انتخاب کاربر بارگذاری می‌شود
     
-    def initialize_model(self):
-        """Initialize advanced deep learning model with perceptual features"""
+    def check_gpu(self):
+        """بررسی وضعیت GPU"""
         try:
             if torch.cuda.is_available():
                 self.device = torch.device('cuda')
                 gpu_name = torch.cuda.get_device_name(0)
-                self.gpu_label.config(text=f"✅ GPU فعال: {gpu_name}")
+                memory = torch.cuda.get_device_properties(0).total_memory / (1024**3)
+                self.gpu_label.config(text=f"✅ GPU فعال: {gpu_name} ({memory:.1f} GB)")
             else:
                 self.device = torch.device('cpu')
                 self.gpu_label.config(text="⚠️ GPU یافت نشد - استفاده از CPU")
+        except:
+            self.device = torch.device('cpu')
+            self.gpu_label.config(text="⚠️ خطا در تشخیص GPU")
+    
+    def initialize_model(self, model_name):
+        """Initialize selected deep learning model"""
+        try:
+            self.status_label.config(text="⏳ در حال بارگذاری مدل...")
+            self.root.update()
             
-            # استفاده از EfficientNet-B7 که دقیق‌تر از ResNet است
-            from torchvision.models import efficientnet_b4, EfficientNet_B4_Weights
+            # آزاد کردن حافظه GPU از مدل قبلی
+            if self.model is not None:
+                del self.model
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
             
-            self.model = efficientnet_b4(weights=EfficientNet_B4_Weights.IMAGENET1K_V1)
-            # حذف لایه classification برای استخراج features
-            self.model = torch.nn.Sequential(*list(self.model.children())[:-1])
+            self.current_model_name = model_name
+            
+            if model_name == "EfficientNet-B4 (سریع)":
+                from torchvision.models import efficientnet_b4, EfficientNet_B4_Weights
+                self.model = efficientnet_b4(weights=EfficientNet_B4_Weights.IMAGENET1K_V1)
+                self.model = torch.nn.Sequential(*list(self.model.children())[:-1])
+                info = "دقت بالا، سریع"
+                
+            elif model_name == "EfficientNet-B7 (قدرتمند)":
+                from torchvision.models import efficientnet_b7, EfficientNet_B7_Weights
+                self.model = efficientnet_b7(weights=EfficientNet_B7_Weights.IMAGENET1K_V1)
+                self.model = torch.nn.Sequential(*list(self.model.children())[:-1])
+                info = "دقت خیلی بالا، کمی کندتر"
+                
+            elif model_name == "ResNet152 (کلاسیک)":
+                self.model = models.resnet152(weights=models.ResNet152_Weights.IMAGENET1K_V2)
+                self.model = torch.nn.Sequential(*list(self.model.children())[:-1])
+                info = "مدل کلاسیک و پایدار"
+                
+            elif model_name == "ConvNeXt-Large (مدرن)":
+                from torchvision.models import convnext_large, ConvNeXt_Large_Weights
+                self.model = convnext_large(weights=ConvNeXt_Large_Weights.IMAGENET1K_V1)
+                self.model = torch.nn.Sequential(*list(self.model.children())[:-1])
+                info = "معماری مدرن، دقت عالی"
+                
+            elif model_name == "ViT-B/16 (Transformer)":
+                from torchvision.models import vit_b_16, ViT_B_16_Weights
+                self.model = vit_b_16(weights=ViT_B_16_Weights.IMAGENET1K_V1)
+                # برای ViT باید heads را حذف کنیم
+                self.model.heads = torch.nn.Identity()
+                info = "Vision Transformer، دقت بسیار بالا"
+                
+            elif model_name == "ViT-L/16 (Transformer قوی)":
+                from torchvision.models import vit_l_16, ViT_L_16_Weights
+                self.model = vit_l_16(weights=ViT_L_16_Weights.IMAGENET1K_V1)
+                self.model.heads = torch.nn.Identity()
+                info = "Vision Transformer بزرگ، بهترین دقت"
+                
+            elif model_name == "Swin-B (Transformer مدرن)":
+                from torchvision.models import swin_b, Swin_B_Weights
+                self.model = swin_b(weights=Swin_B_Weights.IMAGENET1K_V1)
+                self.model.head = torch.nn.Identity()
+                info = "Swin Transformer، ترکیب CNN + Transformer"
+                
+            elif model_name == "Swin-V2-B (پیشرفته‌ترین)":
+                from torchvision.models import swin_v2_b, Swin_V2_B_Weights
+                self.model = swin_v2_b(weights=Swin_V2_B_Weights.IMAGENET1K_V1)
+                self.model.head = torch.nn.Identity()
+                info = "Swin V2، جدیدترین نسخه"
+            
+            else:
+                raise ValueError("مدل نامعتبر")
+            
             self.model.to(self.device)
             self.model.eval()
             
-            self.gpu_label.config(text=f"✅ مدل پیشرفته: EfficientNet-B4 | GPU: {gpu_name if torch.cuda.is_available() else 'CPU'}")
+            gpu_info = f"GPU: {torch.cuda.get_device_name(0)}" if torch.cuda.is_available() else "CPU"
+            self.model_info_label.config(text=f"📊 {info}")
+            self.gpu_label.config(text=f"✅ {model_name} | {gpu_info}")
+            self.status_label.config(text=f"✅ مدل {model_name} بارگذاری شد")
+            
+            messagebox.showinfo("موفقیت", f"مدل {model_name} با موفقیت بارگذاری شد!\n\n{info}")
+            
+        except ImportError as e:
+            messagebox.showerror("خطا", 
+                f"این مدل در نسخه PyTorch شما موجود نیست.\n\n"
+                f"لطفاً PyTorch و torchvision را به آخرین نسخه به‌روزرسانی کنید:\n"
+                f"pip install --upgrade torch torchvision\n\n{str(e)}")
+            self.status_label.config(text="❌ خطا در بارگذاری مدل")
             
         except Exception as e:
-            # اگر EfficientNet بارگذاری نشد، از ResNet152 استفاده کن
-            try:
-                self.model = models.resnet152(pretrained=True)
-                self.model = torch.nn.Sequential(*list(self.model.children())[:-1])
-                self.model.to(self.device)
-                self.model.eval()
-                self.gpu_label.config(text=f"✅ مدل: ResNet152")
-            except:
-                messagebox.showerror("خطا", f"خطا در بارگذاری مدل: {str(e)}")
+            messagebox.showerror("خطا", f"خطا در بارگذاری مدل:\n{str(e)}")
+            self.status_label.config(text="❌ خطا در بارگذاری مدل")
     
     def setup_ui(self):
         main_container = tk.Frame(self.root, bg='#1a1a2e')
@@ -79,16 +149,58 @@ class AdvancedImageComparator:
         self.setup_right_panel(right_panel)
     
     def setup_left_panel(self, parent):
-        header = tk.Frame(parent, bg='#16213e', height=100)
+        header = tk.Frame(parent, bg='#16213e', height=120)
         header.pack(fill='x', pady=(0, 10))
         
         title = tk.Label(header, text="🚀 مقایسه‌کننده تصاویر", 
                         font=('Arial', 18, 'bold'), bg='#16213e', fg='#00d4ff')
-        title.pack(pady=8)
+        title.pack(pady=5)
         
-        subtitle = tk.Label(header, text="EfficientNet-B4 + Multi-Scale Analysis", 
+        subtitle = tk.Label(header, text="با هوش مصنوعی پیشرفته", 
                            font=('Arial', 10), bg='#16213e', fg='#a0a0a0')
         subtitle.pack()
+        
+        # فریم انتخاب مدل
+        model_selection_frame = tk.Frame(header, bg='#16213e')
+        model_selection_frame.pack(fill='x', pady=5, padx=10)
+        
+        tk.Label(model_selection_frame, text="🧠 مدل:", 
+                bg='#16213e', fg='#00d4ff',
+                font=('Arial', 9, 'bold')).pack(side='left', padx=5)
+        
+        self.model_var = tk.StringVar(value="EfficientNet-B4 (سریع)")
+        
+        model_options = [
+            "EfficientNet-B4 (سریع)",
+            "EfficientNet-B7 (قدرتمند)",
+            "ResNet152 (کلاسیک)",
+            "ConvNeXt-Large (مدرن)",
+            "ViT-B/16 (Transformer)",
+            "ViT-L/16 (Transformer قوی)",
+            "Swin-B (Transformer مدرن)",
+            "Swin-V2-B (پیشرفته‌ترین)"
+        ]
+        
+        model_dropdown = ttk.Combobox(model_selection_frame, 
+                                     textvariable=self.model_var,
+                                     values=model_options,
+                                     state='readonly',
+                                     width=25,
+                                     font=('Arial', 9))
+        model_dropdown.pack(side='left', padx=5)
+        
+        load_model_btn = tk.Button(model_selection_frame, text="بارگذاری", 
+                                   command=self.load_selected_model,
+                                   bg='#00ff88', fg='#000000',
+                                   font=('Arial', 8, 'bold'),
+                                   relief='raised', bd=2, padx=10, pady=3,
+                                   cursor='hand2')
+        load_model_btn.pack(side='left', padx=5)
+        
+        self.model_info_label = tk.Label(header, text="مدلی بارگذاری نشده", 
+                                        bg='#16213e', fg='#ffa500',
+                                        font=('Arial', 8, 'italic'))
+        self.model_info_label.pack(pady=2)
         
         gpu_frame = tk.Frame(parent, bg='#0f3460', relief='solid', bd=2)
         gpu_frame.pack(fill='x', pady=5)
@@ -255,6 +367,11 @@ class AdvancedImageComparator:
     def update_threshold_label(self, value):
         self.threshold_value_label.config(text=f"{float(value):.3f}")
     
+    def load_selected_model(self):
+        """بارگذاری مدل انتخاب شده"""
+        model_name = self.model_var.get()
+        self.initialize_model(model_name)
+    
     def add_folder(self):
         folder = filedialog.askdirectory(title="انتخاب پوشه")
         if folder and folder not in self.folder_paths:
@@ -316,7 +433,7 @@ class AdvancedImageComparator:
             return
         
         if self.model is None:
-            messagebox.showerror("خطا", "مدل بارگذاری نشده است")
+            messagebox.showwarning("هشدار", "لطفاً ابتدا یک مدل بارگذاری کنید")
             return
         
         self.results_listbox.delete(0, tk.END)
@@ -515,8 +632,8 @@ class AdvancedImageComparator:
         
         if not self.duplicates:
             self.status_label.config(
-                text=f"✅ کامل شد در {processing_time:.1f}s - تصویر مشابه نیافت")
-            self.results_listbox.insert(tk.END, "تصویر مشابهی نیافت")
+                text=f"✅ کامل شد در {processing_time:.1f}s - تصویر مشابه یافت نشد")
+            self.results_listbox.insert(tk.END, "تصویر مشابهی یافت نشد")
         else:
             total_images = sum(len(g['paths']) for g in self.duplicates)
             self.status_label.config(
@@ -727,20 +844,20 @@ class AdvancedImageComparator:
                                        activeforeground='#ffffff')
                 preview_btn.pack(side='left', padx=3, expand=True, fill='x')
                 
-                def on_enter(e, btn, color):
+                def on_enter_btn(e, btn, color):
                     btn['background'] = color
                 
-                def on_leave(e, btn, color):
+                def on_leave_btn(e, btn, color):
                     btn['background'] = color
                 
-                open_btn.bind("<Enter>", lambda e: on_enter(e, open_btn, '#2980b9'))
-                open_btn.bind("<Leave>", lambda e: on_leave(e, open_btn, '#3498db'))
+                open_btn.bind("<Enter>", lambda e: on_enter_btn(e, open_btn, '#2980b9'))
+                open_btn.bind("<Leave>", lambda e: on_leave_btn(e, open_btn, '#3498db'))
                 
-                delete_btn.bind("<Enter>", lambda e: on_enter(e, delete_btn, '#c0392b'))
-                delete_btn.bind("<Leave>", lambda e: on_leave(e, delete_btn, '#e74c3c'))
+                delete_btn.bind("<Enter>", lambda e: on_enter_btn(e, delete_btn, '#c0392b'))
+                delete_btn.bind("<Leave>", lambda e: on_leave_btn(e, delete_btn, '#e74c3c'))
                 
-                preview_btn.bind("<Enter>", lambda e: on_enter(e, preview_btn, '#8e44ad'))
-                preview_btn.bind("<Leave>", lambda e: on_leave(e, preview_btn, '#9b59b6'))
+                preview_btn.bind("<Enter>", lambda e: on_enter_btn(e, preview_btn, '#8e44ad'))
+                preview_btn.bind("<Leave>", lambda e: on_leave_btn(e, preview_btn, '#9b59b6'))
                 
                 # مسیر کامل فایل - قابل کپی
                 path_frame = tk.Frame(card_frame, bg='#0d1b2a', cursor='hand2')
@@ -823,20 +940,17 @@ class AdvancedImageComparator:
             messagebox.showerror("خطا", f"خطا در نمایش تصویر: {str(e)}")
     
     def open_folder(self, file_path):
-        """Open file location in file explorer - FIXED VERSION"""
+        """Open file location in file explorer"""
         try:
-            # اطمینان از اینکه مسیر فایل صحیح است
             file_path = os.path.abspath(file_path)
             folder_path = os.path.dirname(file_path)
             
             system = platform.system()
             if system == 'Windows':
-                # در ویندوز از explorer با /select استفاده می‌کنیم
                 subprocess.Popen(['explorer', '/select,', os.path.normpath(file_path)])
             elif system == 'Darwin':  # macOS
                 subprocess.run(['open', '-R', file_path])
             else:  # Linux
-                # در لینوکس فقط پوشه را باز می‌کنیم
                 subprocess.run(['xdg-open', folder_path])
                 
         except Exception as e:
@@ -888,6 +1002,7 @@ class AdvancedImageComparator:
                     f.write("نتایج مقایسه تصاویر\n")
                     f.write("="*70 + "\n\n")
                     
+                    f.write(f"مدل استفاده شده: {self.current_model_name}\n")
                     f.write(f"تعداد پوشه‌های اسکن شده: {len(self.folder_paths)}\n")
                     for folder in self.folder_paths:
                         f.write(f"  - {folder}\n")

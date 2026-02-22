@@ -72,7 +72,7 @@ class AdvancedImageComparator:
                         font=('Arial', 18, 'bold'), bg='#16213e', fg='#00d4ff')
         title.pack(pady=8)
         
-        subtitle = tk.Label(header, text="Deep Learning + GPU", 
+        subtitle = tk.Label(header, text="Deep Learning", 
                            font=('Arial', 10), bg='#16213e', fg='#a0a0a0')
         subtitle.pack()
         
